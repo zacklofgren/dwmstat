@@ -4,12 +4,13 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/audioio.h>
+#include <sys/param.h>
+#include <sys/sensors.h>
+#include <sys/sysctl.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
-
-#define MAX(a,b) (((a) > (b)) ? (a) : (b))
 
 static Display *dpy;
 
@@ -26,7 +27,6 @@ _time(void)
 		errx(1, "could not convert system to local time");
 	if (!strftime(s, sizeof(s), "%a %d.%m.%y %H:%M", tm))
 		errx(1, "could not convert local time to string");
-
 	return s;
 }
 
@@ -68,9 +68,29 @@ _volume(void)
 			        mc.un.value.level[AUDIO_MIXER_LEVEL_RIGHT]);
 		}
 	}
+
 	if (v == -1)
 		errx(1, "could not get system volume");
 	return (v * 100) / 255;
+}
+
+static const unsigned int
+_temp(void)
+{
+	static int mib[5];
+	struct sensor sn;
+	size_t sn_sz;
+
+	mib[0] = CTL_HW;
+	mib[1] = HW_SENSORS;
+	mib[2] = 0;
+	mib[3] = SENSOR_TEMP;
+	mib[4] = 0;
+	sn_sz = sizeof(sn);
+
+	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1)
+		errx(1, "could not read CPU temperature");
+	return (sn.value - 273150000) / 1000000;
 }
 
 static void
@@ -86,8 +106,9 @@ main(void)
 	if (!(dpy = XOpenDisplay(NULL)))
 		errx(1, "cannot open display");
 
-	printf("%3d%%  %s",
+	printf("%3d%%  %3d°C  %s",
 	       _volume(),
+	       _temp(),
 	       _time());
 
 	XCloseDisplay(dpy);
