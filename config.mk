@@ -10,7 +10,7 @@ INCS = -I${X11INC}
 LIBS = -L${X11LIB} -lX11
 
 # flags
-CFLAGS  = -std=c99 -pedantic -Wall -Werror -Wno-error=variadic-macros -Os ${INCS}
+CFLAGS  = -std=c99 -pedantic -Wall -Werror -Wno-error=variadic-macros -Wno-error=unused-function -Os ${INCS}
 LDFLAGS = -s ${LIBS}
 
 # compiler and linker
