@@ -1,18 +1,46 @@
 #include <err.h>
 #include <fcntl.h>
+#include <ifaddrs.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <sys/audioio.h>
-#include <sys/param.h>
-#include <sys/sensors.h>
-#include <sys/sysctl.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/audioio.h>
+#include <sys/param.h>
+#include <sys/sensors.h>
+#include <sys/socket.h>
+#include <sys/sysctl.h>
 #include <X11/Xlib.h>
 
 static Display *dpy;
+
+static void
+setstatus(const char *s)
+{
+	XStoreName(dpy, DefaultRootWindow(dpy), s);
+	XSync(dpy, False);
+}
+
+static const unsigned int
+_temp(void)
+{
+	static int mib[5];
+	struct sensor sn;
+	size_t sn_sz;
+
+	mib[0] = CTL_HW;
+	mib[1] = HW_SENSORS;
+	mib[2] = 0;
+	mib[3] = SENSOR_TEMP;
+	mib[4] = 0;
+	sn_sz = sizeof(sn);
+
+	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1)
+		errx(1, "could not read CPU temperature");
+	return (sn.value - 273150000) / 1000000;
+}
 
 static const char*
 _time(void)
@@ -70,32 +98,6 @@ _volume(void)
 	if (v == -1)
 		errx(1, "could not get system volume");
 	return (v * 100) / 255;
-}
-
-static const unsigned int
-_temp(void)
-{
-	static int mib[5];
-	struct sensor sn;
-	size_t sn_sz;
-
-	mib[0] = CTL_HW;
-	mib[1] = HW_SENSORS;
-	mib[2] = 0;
-	mib[3] = SENSOR_TEMP;
-	mib[4] = 0;
-	sn_sz = sizeof(sn);
-
-	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1)
-		errx(1, "could not read CPU temperature");
-	return (sn.value - 273150000) / 1000000;
-}
-
-static void
-setstatus(const char *s)
-{
-	XStoreName(dpy, DefaultRootWindow(dpy), s);
-	XSync(dpy, False);
 }
 
 int
