@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <err.h>
 #include <fcntl.h>
 #include <ifaddrs.h>
@@ -21,6 +22,42 @@ setstatus(const char *s)
 {
 	XStoreName(dpy, DefaultRootWindow(dpy), s);
 	XSync(dpy, False);
+}
+
+static const char*
+_ip(const char* ifn)
+{
+	struct ifaddrs *ifap, *ifa;
+	static char addr[32];
+
+	if (getifaddrs(&ifap) == -1)
+		errx(1, "could not get network interfaces list");
+
+	for (ifa = ifap; ifa; ifa = ifa->ifa_next)
+		if (!strcmp(ifa->ifa_name, ifn))
+			break;
+	if (!ifa) {
+		freeifaddrs(ifap);
+		errx(1, "could not find given interface");
+	}
+
+	for (; ifa && !strcmp(ifa->ifa_name, ifn); ifa = ifa->ifa_next)
+		if (ifa->ifa_addr &&
+		    (ifa->ifa_addr->sa_family == AF_INET ||
+		     ifa->ifa_addr->sa_family == AF_INET6)) {
+			if (inet_ntop(ifa->ifa_addr->sa_family,
+			              ifa->ifa_addr->sa_data,
+			              addr,
+			              sizeof(addr)))
+				break;
+			else
+				warnx("could not convert IP address");
+		}
+	freeifaddrs(ifap);
+
+	if (!ifa)
+		errx(1, "could not find IP address");
+	return addr;
 }
 
 static const unsigned int
@@ -106,7 +143,8 @@ main(void)
 	if (!(dpy = XOpenDisplay(NULL)))
 		errx(1, "cannot open display");
 
-	printf("%3d%%  %3d°C  %s\n",
+	printf("%s  %3d%%  %3d°C  %s\n",
+	       _ip("trunk0"),
 	       _volume(),
 	       _temp(),
 	       _time());
