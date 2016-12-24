@@ -57,7 +57,7 @@ _ip(const char* ifn)
 
 	if (!ifa)
 		errx(1, "could not find IP address");
-	return addr;
+	return (addr);
 }
 
 static const unsigned int
@@ -76,7 +76,7 @@ _temp(void)
 
 	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1)
 		errx(1, "could not read CPU temperature");
-	return (sn.value - 273150000) / 1000000;
+	return ((sn.value - 273150000) / 1000000);
 }
 
 static const char*
@@ -90,7 +90,7 @@ _time(void)
 	    !(tm = localtime(&t)) ||
 	    !strftime(s, sizeof(s), "%a %d.%m.%y %H:%M", tm))
 		errx(1, "could not get current system time");
-	return s;
+	return (s);
 }
 
 static const unsigned int
@@ -134,7 +134,7 @@ _volume(void)
 
 	if (v == -1)
 		errx(1, "could not get system volume");
-	return (v * 100) / 255;
+	return ((v * 100) / 255);
 }
 
 int
@@ -151,5 +151,5 @@ main(void)
 
 	XCloseDisplay(dpy);
 
-	return 0;
+	return (0);
 }
