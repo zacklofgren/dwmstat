@@ -27,7 +27,7 @@ setstatus(const char *s)
 static const char*
 _ip(const char* ifn)
 {
-	struct ifaddrs *ifap, *ifa;
+	static struct ifaddrs *ifap, *ifa;
 	static char addr[32];
 
 	if (getifaddrs(&ifap) == -1)
@@ -63,15 +63,10 @@ _ip(const char* ifn)
 static const unsigned int
 _temp(void)
 {
-	static int mib[5];
-	struct sensor sn;
-	size_t sn_sz;
+	static const int mib[5] = {CTL_HW, HW_SENSORS, 0, SENSOR_TEMP, 0};
+	static struct sensor sn;
+	static size_t sn_sz;
 
-	mib[0] = CTL_HW;
-	mib[1] = HW_SENSORS;
-	mib[2] = 0;
-	mib[3] = SENSOR_TEMP;
-	mib[4] = 0;
 	sn_sz = sizeof(sn);
 
 	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1)
@@ -82,8 +77,8 @@ _temp(void)
 static const char*
 _time(void)
 {
-	time_t t;
-	struct tm *tm;
+	static time_t t;
+	static struct tm *tm;
 	static char s[26];
 
 	if ((t = time(NULL)) == (time_t)-1 ||
@@ -97,10 +92,10 @@ static const unsigned int
 _volume(void)
 {
 	static int cls;
-	struct mixer_devinfo mdi;
-	struct mixer_ctrl mc;
-	int m;
-	int v;
+	static struct mixer_devinfo mdi;
+	static struct mixer_ctrl mc;
+	static int m;
+	static int v;
 
 	if ((m = open("/dev/mixer", O_RDONLY)) == -1)
 		errx(1, "could not open mixer device");
