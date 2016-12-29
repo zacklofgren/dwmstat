@@ -96,9 +96,11 @@ _time(void)
 	static char s[26];
 
 	if ((t = time(NULL)) == (time_t)-1 ||
-	    !(tm = localtime(&t)) ||
-	    !strftime(s, sizeof(s), "%a %d.%m.%y %H:%M", tm))
+	    !(tm = localtime(&t)))
 		errx(1, "cannot get current system time");
+	if (!strftime(s, sizeof(s), "%a %d.%m.%y %H:%M", tm))
+		errx(1, "cannot format system time");
+
 	return (s);
 }
 
@@ -152,10 +154,10 @@ main(void)
 	if (!(dpy = XOpenDisplay(NULL)))
 		errx(1, "cannot open display");
 
-	printf("%s  %3d%%  %3d°C  %s\n",
+	printf("%s  %3d°C  %3d%%  %s\n",
 	       _ip("trunk0"),
-	       _volume(),
 	       _temp(),
+	       _volume(),
 	       _time());
 
 	XCloseDisplay(dpy);
