@@ -32,6 +32,7 @@ _ip(const char *ifn)
 	const static struct sockaddr_in *sin;
 	const static struct sockaddr_in6 *sin6;
 	static char addr[INET6_ADDRSTRLEN];
+	const static size_t addr_sz = sizeof(addr);
 
 	if (getifaddrs(&ifap) == -1)
 		errx(1, "cannot get network interfaces list");
@@ -52,7 +53,7 @@ _ip(const char *ifn)
 				if (inet_ntop(sin->sin_family,
 				              &sin->sin_addr,
 				              addr,
-				              sizeof(addr)))
+				              addr_sz))
 					goto skip;
 				else
 					warnx("cannot convert IPv4 address");
@@ -62,9 +63,10 @@ _ip(const char *ifn)
 				if (inet_ntop(sin6->sin6_family,
 				              &sin6->sin6_addr,
 				              addr,
-				              sizeof(addr)))
-					goto skip;
-				else
+				              addr_sz)) {
+					if (strncmp(addr, "fe80", 4))
+						goto skip;
+				} else
 					warnx("cannot convert IPv6 address");
 				break;
 			}
