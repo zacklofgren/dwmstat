@@ -50,20 +50,16 @@ _ip(const char *ifn)
 			switch (ifa->ifa_addr->sa_family) {
 			case AF_INET:
 				sin = (const struct sockaddr_in *)(ifa->ifa_addr);
-				if (inet_ntop(sin->sin_family,
-				              &sin->sin_addr,
-				              addr,
-				              addr_sz))
+				if (inet_ntop(sin->sin_family, &sin->sin_addr,
+				              addr, addr_sz))
 					goto skip;
 				else
 					warnx("cannot convert IPv4 address");
 				break;
 			case AF_INET6:
 				sin6 = (const struct sockaddr_in6 *)(ifa->ifa_addr);
-				if (inet_ntop(sin6->sin6_family,
-				              &sin6->sin6_addr,
-				              addr,
-				              addr_sz)) {
+				if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
+				              addr, addr_sz)) {
 					if (strncmp(addr, "fe80", 4))
 						goto skip;
 				} else
