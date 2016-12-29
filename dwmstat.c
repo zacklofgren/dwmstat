@@ -2,6 +2,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <ifaddrs.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -25,10 +26,12 @@ setstatus(const char *s)
 }
 
 static const char*
-_ip(const char* ifn)
+_ip(const char *ifn)
 {
 	static struct ifaddrs *ifap, *ifa;
-	static char addr[32];
+	const static struct sockaddr_in *sin;
+	const static struct sockaddr_in6 *sin6;
+	static char addr[INET6_ADDRSTRLEN];
 
 	if (getifaddrs(&ifap) == -1)
 		errx(1, "cannot get network interfaces list");
@@ -42,17 +45,30 @@ _ip(const char* ifn)
 	}
 
 	for (; ifa && !strcmp(ifa->ifa_name, ifn); ifa = ifa->ifa_next)
-		if (ifa->ifa_addr &&
-		    (ifa->ifa_addr->sa_family == AF_INET ||
-		     ifa->ifa_addr->sa_family == AF_INET6)) {
-			if (inet_ntop(ifa->ifa_addr->sa_family,
-			              ifa->ifa_addr->sa_data,
-			              addr,
-			              sizeof(addr)))
+		if (ifa->ifa_addr)
+			switch (ifa->ifa_addr->sa_family) {
+			case AF_INET:
+				sin = (const struct sockaddr_in *)(ifa->ifa_addr);
+				if (inet_ntop(sin->sin_family,
+				              &sin->sin_addr,
+				              addr,
+				              sizeof(addr)))
+					goto skip;
+				else
+					warnx("cannot convert IPv4 address");
 				break;
-			else
-				warnx("cannot convert IP address");
-		}
+			case AF_INET6:
+				sin6 = (const struct sockaddr_in6 *)(ifa->ifa_addr);
+				if (inet_ntop(sin6->sin6_family,
+				              &sin6->sin6_addr,
+				              addr,
+				              sizeof(addr)))
+					goto skip;
+				else
+					warnx("cannot convert IPv6 address");
+				break;
+			}
+skip:
 	freeifaddrs(ifap);
 
 	if (!ifa)
