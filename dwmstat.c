@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -19,13 +20,6 @@
 #include "config.h"
 
 static Display *dpy;
-
-static void
-setstatus(const char *s)
-{
-	XStoreName(dpy, DefaultRootWindow(dpy), s);
-	XSync(dpy, False);
-}
 
 static const char*
 _ip(const char *ifn)
@@ -152,17 +146,41 @@ _volume(void)
 	return ((v * 100) / 255);
 }
 
+static void
+setstatus(const char *fmt, ...)
+{
+	static char s[MAX_LEN];
+	static va_list ap;
+	static int r;
+
+	static const size_t s_sz = sizeof(s);
+
+	va_start(ap, fmt);
+	if ((r = vsnprintf(s, s_sz, fmt, ap)) >= s_sz)
+		warnx("resulting status exceeds maximum size");
+	else if (r == -1)
+		errx(1, "cannot create status string");
+	va_end(ap);
+
+	XStoreName(dpy, DefaultRootWindow(dpy), s);
+	XSync(dpy, False);
+}
+
 int
 main(void)
 {
 	if (!(dpy = XOpenDisplay(NULL)))
 		errx(1, "cannot open display");
 
-	printf(OUTFMT,
-	       _ip(INTERFACE),
-	       _temp(),
-	       _volume(),
-	       _time());
+loop:
+	setstatus(OUTFMT,
+	          _ip(INTERFACE),
+	          _temp(),
+	          _volume(),
+	          _time());
+
+	(void)sleep(INTERVAL);
+	goto loop;
 
 	XCloseDisplay(dpy);
 
