@@ -25,10 +25,11 @@ static const char*
 _ip(const char *ifn)
 {
 	static struct ifaddrs *ifap, *ifa;
-	const static struct sockaddr_in *sin;
-	const static struct sockaddr_in6 *sin6;
+	static const struct sockaddr_in *sin;
+	static const struct sockaddr_in6 *sin6;
 	static char addr[INET6_ADDRSTRLEN];
-	const static size_t addr_sz = sizeof(addr);
+
+	static const size_t addr_sz = sizeof(addr);
 
 	if (getifaddrs(&ifap) == -1)
 		errx(1, "cannot get network interfaces list");
@@ -45,14 +46,14 @@ _ip(const char *ifn)
 	     ifa = ifa->ifa_next)
 		switch (ifa->ifa_addr->sa_family) {
 		case AF_INET:
-			sin = (const struct sockaddr_in *)(ifa->ifa_addr);
+			sin = (const struct sockaddr_in *)ifa->ifa_addr;
 			if (inet_ntop(sin->sin_family, &sin->sin_addr,
 			              addr, addr_sz))
 				goto skip;
 			warnx("cannot convert IPv4 address");
 			break;
 		case AF_INET6:
-			sin6 = (const struct sockaddr_in6 *)(ifa->ifa_addr);
+			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
 			if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
 			              addr, addr_sz)) {
 #if SKIP_LLA
