@@ -16,6 +16,8 @@
 #include <sys/sysctl.h>
 #include <X11/Xlib.h>
 
+#include "config.h"
+
 static Display *dpy;
 
 static void
@@ -60,8 +62,10 @@ _ip(const char *ifn)
 				sin6 = (const struct sockaddr_in6 *)(ifa->ifa_addr);
 				if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
 				              addr, addr_sz)) {
+#ifdef NO_LLA
 					if (strncmp(addr, "fe80", 4))
 						goto skip;
+#endif
 				} else
 					warnx("cannot convert IPv6 address");
 				break;
@@ -93,12 +97,12 @@ _time(void)
 {
 	static time_t t;
 	static struct tm *tm;
-	static char s[26];
+	static char s[64];
 
 	if ((t = time(NULL)) == (time_t)-1 ||
 	    !(tm = localtime(&t)))
 		errx(1, "cannot get current system time");
-	if (!strftime(s, sizeof(s), "%a %d.%m.%y %H:%M", tm))
+	if (!strftime(s, sizeof(s), TIMEFMT, tm))
 		errx(1, "cannot format system time");
 
 	return (s);
@@ -154,8 +158,8 @@ main(void)
 	if (!(dpy = XOpenDisplay(NULL)))
 		errx(1, "cannot open display");
 
-	printf("%s  %3d°C  %3d%%  %s\n",
-	       _ip("trunk0"),
+	printf(OUTFMT,
+	       _ip(INTERFACE),
 	       _temp(),
 	       _volume(),
 	       _time());

@@ -8,10 +8,12 @@ all: dwmstat
 .c.o:
 	@${CC} -c ${CFLAGS} $<
 
-${OBJ}:
-	config.mk
+${OBJ}: config.h config.mk
 
-dwmstatus: ${OBJ}
+config.h:
+	@cp config.def.h $@
+
+dwmstat: ${OBJ}
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
