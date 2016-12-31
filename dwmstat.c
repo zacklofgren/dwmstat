@@ -47,29 +47,29 @@ _ip(const char *ifn)
 		errx(1, "cannot find given interface");
 	}
 
-	for (; ifa && !strcmp(ifa->ifa_name, ifn); ifa = ifa->ifa_next)
-		if (ifa->ifa_addr)
-			switch (ifa->ifa_addr->sa_family) {
-			case AF_INET:
-				sin = (const struct sockaddr_in *)(ifa->ifa_addr);
-				if (inet_ntop(sin->sin_family, &sin->sin_addr,
-				              addr, addr_sz))
-					goto skip;
-				warnx("cannot convert IPv4 address");
-				break;
-			case AF_INET6:
-				sin6 = (const struct sockaddr_in6 *)(ifa->ifa_addr);
-				if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
-				              addr, addr_sz)) {
+	for (; ifa && ifa->ifa_addr && !strcmp(ifa->ifa_name, ifn);
+	     ifa = ifa->ifa_next)
+		switch (ifa->ifa_addr->sa_family) {
+		case AF_INET:
+			sin = (const struct sockaddr_in *)(ifa->ifa_addr);
+			if (inet_ntop(sin->sin_family, &sin->sin_addr,
+			              addr, addr_sz))
+				goto skip;
+			warnx("cannot convert IPv4 address");
+			break;
+		case AF_INET6:
+			sin6 = (const struct sockaddr_in6 *)(ifa->ifa_addr);
+			if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
+			              addr, addr_sz)) {
 #if SKIP_LLA
-					if (!strncmp(addr, "fe80", 4))
-						continue;
+				if (!strncmp(addr, "fe80", 4))
+					continue;
 #endif
-					goto skip;
-				} else
-					warnx("cannot convert IPv6 address");
-				break;
-			}
+				goto skip;
+			} else
+				warnx("cannot convert IPv6 address");
+			break;
+		}
 skip:
 	freeifaddrs(ifap);
 
