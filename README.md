@@ -2,7 +2,8 @@ dwmstat
 =======
 dwmstat is the successor of
 [setdwmstatus](https://notabug.org/kl3/scripts/setdwmstatus) in order to
-provide a really simple and more efficient alternative.
+provide a really simple and more efficient way of having a status bar for
+[dwm](http://dwm.suckless.org).
 
 No fancy unicode "graphics" are used, although users are free to modify
 `OUTFMT` in their `config.h`.
