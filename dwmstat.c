@@ -32,7 +32,7 @@ _ip(const char *ifn)
 	static const size_t addr_sz = sizeof(addr);
 
 	if (getifaddrs(&ifap) == -1)
-		errx(1, "cannot get network interfaces list");
+		errx(1, "cannot interface addresses");
 
 	for (ifa = ifap; ifa; ifa = ifa->ifa_next)
 		if (!strcmp(ifa->ifa_name, ifn))
@@ -50,8 +50,7 @@ _ip(const char *ifn)
 			if (inet_ntop(sin->sin_family, &sin->sin_addr,
 			              addr, addr_sz))
 				goto skip;
-			warnx("cannot convert IPv4 address");
-			break;
+			goto fail;
 		case AF_INET6:
 			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
 			if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
@@ -61,16 +60,21 @@ _ip(const char *ifn)
 					continue;
 #endif
 				goto skip;
-			} else
-				warnx("cannot convert IPv6 address");
-			break;
+			}
+			goto fail;
 		}
 skip:
 	freeifaddrs(ifap);
 
 	if (!ifa)
-		errx(1, "cannot find IP address");
+		warnx("cannot find IP address");
 	return (addr);
+
+fail:
+	freeifaddrs(ifap);
+	errx(1, "cannot convert IP address");
+	/* unreachable */
+	return ("");
 }
 
 static const unsigned int
@@ -99,7 +103,6 @@ _time(void)
 		errx(1, "cannot get current system time");
 	if (!strftime(s, sizeof(s), TIMEFMT, tm))
 		errx(1, "cannot format system time");
-
 	return (s);
 }
 
@@ -184,6 +187,5 @@ loop:
 	goto loop;
 
 	XCloseDisplay(dpy);
-
 	return (0);
 }
