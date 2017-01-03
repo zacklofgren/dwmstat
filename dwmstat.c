@@ -19,6 +19,8 @@
 
 #include "config.h"
 
+#define IS_LLA(a)	(!strncmp((a), "fe80", 4))
+
 static Display *dpy;
 
 static const char*
@@ -56,7 +58,7 @@ _ip(const char *ifn)
 			if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
 			              addr, addr_sz)) {
 #if SKIP_LLA
-				if (!strncmp(addr, "fe80", 4))
+				if (IS_LLA(addr))
 					continue;
 #endif
 				goto skip;
@@ -66,8 +68,13 @@ _ip(const char *ifn)
 skip:
 	freeifaddrs(ifap);
 
-	if (!ifa)
+	if (!ifa) {
 		warnx("cannot find IP address");
+#if SKIP_LLA
+		if (IS_LLA(addr))
+			return ("-");
+#endif
+}
 	return (addr);
 
 fail:
