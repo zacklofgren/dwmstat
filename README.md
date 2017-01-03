@@ -29,7 +29,7 @@ Build and install dwmstat (if necessary as root):
 
 		$ make clean install
 
-Running slock
--------------
+Running dwmstat
+---------------
 dwmstat is usually started in background through xinit(1), see my
 [xinitrc(5)](https://notabug.org/kl3/dotfiles/.xinitrc) for example.
