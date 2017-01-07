@@ -1,29 +1,35 @@
+#include <sys/ioctl.h>
+#include <sys/param.h>
+#include <sys/audioio.h>
+#include <sys/sensors.h>
+#include <sys/socket.h>
+#include <sys/sysctl.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+
 #include <err.h>
 #include <fcntl.h>
 #include <ifaddrs.h>
-#include <netinet/in.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <sys/audioio.h>
-#include <sys/param.h>
-#include <sys/sensors.h>
-#include <sys/socket.h>
-#include <sys/sysctl.h>
+
 #include <X11/Xlib.h>
 
 #include "config.h"
 
 #define IS_LLA(a)	(!strncmp((a), "fe80", 4))
 
+static const char		*_ip(const char *);
+static const unsigned int	 _temp(void);
+static const char		*_time(void);
+static const unsigned int	 _volume(void);
+
 static Display *dpy;
 
-static const char*
+static const char *
 _ip(const char *ifn)
 {
 	static struct ifaddrs *ifap, *ifa;
@@ -34,14 +40,14 @@ _ip(const char *ifn)
 	static const size_t addr_sz = sizeof(addr);
 
 	if (getifaddrs(&ifap) == -1)
-		errx(1, "cannot interface addresses");
+		errx(1, "getifaddrs");
 
-	for (ifa = ifap; ifa; ifa = ifa->ifa_next)
-		if (!strcmp(ifa->ifa_name, ifn))
-			break;
+	for (ifa = ifap; ifa && strcmp(ifa->ifa_name, ifn);
+	     ifa = ifa->ifa_next)
+			;
 	if (!ifa) {
 		freeifaddrs(ifap);
-		errx(1, "cannot find given interface");
+		err(1, "freeifaddrs");
 	}
 
 	for (; ifa && ifa->ifa_addr && !strcmp(ifa->ifa_name, ifn);
@@ -79,7 +85,7 @@ skip:
 
 fail:
 	freeifaddrs(ifap);
-	errx(1, "cannot convert IP address");
+	err(1, "freeifaddrs");
 	/* unreachable */
 	return ("");
 }
@@ -94,22 +100,23 @@ _temp(void)
 	sn_sz = sizeof(sn);
 
 	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1)
-		errx(1, "cannot read CPU temperature");
+		err(1, "sysctl");
 	return ((sn.value - 273150000) / 1000000);
 }
 
-static const char*
+static const char *
 _time(void)
 {
 	static time_t t;
 	static struct tm *tm;
 	static char s[64];
 
-	if ((t = time(NULL)) == (time_t)-1 ||
-	    !(tm = localtime(&t)))
-		errx(1, "cannot get current system time");
+	if ((t = time(NULL)) == (time_t)-1)
+		err(1, "time");
+	if (!(tm = localtime(&t)))
+		err(1, "localtime");
 	if (!strftime(s, sizeof(s), TIMEFMT, tm))
-		errx(1, "cannot format system time");
+		err(1, "strftime");
 	return (s);
 }
 
@@ -123,28 +130,28 @@ _volume(void)
 	static int v;
 
 	if ((m = open("/dev/mixer", O_RDONLY)) == -1)
-		errx(1, "cannot open mixer device");
+		err(1, "open");
 
 	cls = -1;
 	v = -1;
 
 	for (mdi.index = 0; cls == -1; ++mdi.index) {
 		if (ioctl(m, AUDIO_MIXER_DEVINFO, &mdi) == -1)
-			errx(1, "cannot get audio mixer information");
+			err(1, "ioctl");
 		if (mdi.type == AUDIO_MIXER_CLASS &&
 		    !strcmp(mdi.label.name, AudioCoutputs))
 			cls = mdi.index;
 	}
 	for (mdi.index = 0; v == -1; ++mdi.index) {
 		if (ioctl(m, AUDIO_MIXER_DEVINFO, &mdi) == -1)
-			errx(1, "cannot get audio mixer information");
+			err(1, "ioctl");
 		if (mdi.type == AUDIO_MIXER_VALUE &&
 		    mdi.prev == AUDIO_MIXER_LAST &&
 		    mdi.mixer_class == cls &&
 		    !strcmp(mdi.label.name, AudioNmaster)) {
 			mc.dev = mdi.index;
 			if (ioctl(m, AUDIO_MIXER_READ, &mc) == -1)
-				errx(1, "cannot read audio mixer");
+				err(1, "ioctl");
 			v = mc.un.value.num_channels == 1 ?
 			    mc.un.value.level[AUDIO_MIXER_LEVEL_MONO] :
 			    MAX(mc.un.value.level[AUDIO_MIXER_LEVEL_LEFT],
@@ -165,12 +172,13 @@ setstatus(const char *fmt, ...)
 	static int r;
 
 	static const size_t s_sz = sizeof(s);
-
 	va_start(ap, fmt);
-	if ((r = vsnprintf(s, s_sz, fmt, ap)) >= s_sz)
-		warnx("resulting status exceeds maximum size");
-	else if (r == -1)
-		errx(1, "cannot create status string");
+
+	if ((r = vsnprintf(s, s_sz, fmt, ap)) == -1)
+		err(1, "vsnprintf");
+	if (r >= s_sz)
+		warn("vsnprintf");
+
 	va_end(ap);
 
 	XStoreName(dpy, DefaultRootWindow(dpy), s);
