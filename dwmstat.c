@@ -20,8 +20,6 @@
 
 #include "config.h"
 
-#define IS_LLA(a)	(!strncmp((a), "fe80", 4))
-
 static const char		*_ip(const char *);
 static const unsigned int	 _temp(void);
 static const char		*_time(void);
@@ -33,7 +31,7 @@ static const char *
 _ip(const char *ifn)
 {
 	static struct ifaddrs *ifap, *ifa;
-	static const struct sockaddr_in *sin;
+	static const struct sockaddr_in  *sin;
 	static const struct sockaddr_in6 *sin6;
 	static char addr[INET6_ADDRSTRLEN];
 
@@ -61,14 +59,13 @@ _ip(const char *ifn)
 			goto fail;
 		case AF_INET6:
 			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
-			if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
-			              addr, addr_sz)) {
 #if SKIP_LLA
-				if (IS_LLA(addr))
-					continue;
+			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
+				continue;
 #endif
+			if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
+			              addr, addr_sz))
 				goto skip;
-			}
 			goto fail;
 		}
 skip:
@@ -77,7 +74,7 @@ skip:
 	if (!ifa) {
 		warnx("cannot find IP address");
 #if SKIP_LLA
-		if (IS_LLA(addr))
+		if (!*addr)
 			return ("-");
 #endif
 }
