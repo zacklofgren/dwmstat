@@ -55,7 +55,7 @@ _ip(const char *ifn)
 			sin = (const struct sockaddr_in *)ifa->ifa_addr;
 			if (inet_ntop(sin->sin_family, &sin->sin_addr,
 			              addr, addr_sz))
-				goto skip;
+				goto success;
 			goto fail;
 		case AF_INET6:
 			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
@@ -65,10 +65,10 @@ _ip(const char *ifn)
 #endif
 			if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
 			              addr, addr_sz))
-				goto skip;
+				goto success;
 			goto fail;
 		}
-skip:
+success:
 	freeifaddrs(ifap);
 
 	if (!ifa) {
