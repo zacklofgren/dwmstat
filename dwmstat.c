@@ -64,16 +64,16 @@ ip(const char *ifn)
 
 	static const size_t addr_sz = sizeof(addr);
 
-	if (getifaddrs(&ifap) == -1)
-		errx(1, "getifaddrs");
+	if (getifaddrs(&ifap) == -1) {
+		warn("getifaddrs");
+		return ("");
+	}
 
 	for (ifa = ifap; ifa && strcmp(ifa->ifa_name, ifn);
 	     ifa = ifa->ifa_next)
 		;
-	if (!ifa) {
-		freeifaddrs(ifap);
-		err(1, "freeifaddrs");
-	}
+	if (!ifa)
+		goto fail;
 
 	for (; ifa && ifa->ifa_addr && !strcmp(ifa->ifa_name, ifn);
 	     ifa = ifa->ifa_next)
@@ -97,13 +97,10 @@ ip(const char *ifn)
 		}
 success:
 	freeifaddrs(ifap);
-	if (!ifa) {
-		warnx("cannot find IP address");
 #if SKIP_LLA
-		if (!*addr)
-			return ("-");
+	if (!ifa && !*addr)
+		warnx("cannot find IP address");
 #endif
-}
 	return (addr);
 
 fail:
