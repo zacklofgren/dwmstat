@@ -10,6 +10,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <ifaddrs.h>
+#include <machine/apmvar.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,12 +21,38 @@
 
 #include "config.h"
 
+static unsigned char	 battery(void);
 static const char	*ip(const char *);
 static unsigned int	 cputemp(void);
 static const char	*timedate(void);
 static unsigned int	 volume(void);
 
 static Display *dpy;
+
+static unsigned char
+battery(void)
+{
+	static int fd;
+	static struct apm_power_info pi;
+
+	if ((fd = open("/dev/apm", O_RDONLY)) == -1)
+		warn("open");
+	if (ioctl(fd, APM_IOC_GETPOWER, &pi) == -1) {
+		close(fd);
+		warn("ioctl");
+	}
+	close(fd);
+
+	switch (pi.battery_state) {
+	case APM_BATT_UNKNOWN:
+		warnx("unknown battery state");
+		return (0);
+	case APM_BATTERY_ABSENT:
+		warnx("no battery");
+		return (0);
+	}
+	return (pi.battery_life);
+}
 
 static const char *
 ip(const char *ifn)
@@ -190,6 +217,7 @@ main(void)
 loop:
 	setstatus(OUTFMT,
 	          ip(INTERFACE),
+	          battery(),
 	          cputemp(),
 	          volume(),
 	          timedate());
