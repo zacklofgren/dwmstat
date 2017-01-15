@@ -23,9 +23,9 @@
 
 static unsigned char	 battery(void);
 static const char	*ip(const char *);
-static unsigned int	 cputemp(void);
+static int		 cputemp(void);
 static const char	*timedate(void);
-static unsigned int	 volume(void);
+static int		 volume(void);
 
 static Display *dpy;
 
@@ -35,21 +35,24 @@ battery(void)
 	static int fd;
 	static struct apm_power_info pi;
 
-	if ((fd = open("/dev/apm", O_RDONLY)) == -1)
+	if ((fd = open("/dev/apm", O_RDONLY)) == -1) {
 		warn("open");
+		return ('!');
+	}
 	if (ioctl(fd, APM_IOC_GETPOWER, &pi) == -1) {
 		close(fd);
 		warn("ioctl");
+		return ('!');
 	}
 	close(fd);
 
 	switch (pi.battery_state) {
 	case APM_BATT_UNKNOWN:
 		warnx("unknown battery state");
-		return (0);
+		return ('?');
 	case APM_BATTERY_ABSENT:
 		warnx("no battery");
-		return (0);
+		return ('-');
 	}
 	return (pi.battery_life);
 }
@@ -66,14 +69,15 @@ ip(const char *ifn)
 
 	if (getifaddrs(&ifap) == -1) {
 		warn("getifaddrs");
-		return ("");
+		return ("!");
 	}
-
 	for (ifa = ifap; ifa && strcmp(ifa->ifa_name, ifn);
 	     ifa = ifa->ifa_next)
 		;
-	if (!ifa)
+	if (!ifa) {
+		warnx("no such interface");
 		goto fail;
+	}
 
 	for (; ifa && ifa->ifa_addr && !strcmp(ifa->ifa_name, ifn);
 	     ifa = ifa->ifa_next)
@@ -83,6 +87,7 @@ ip(const char *ifn)
 			if (inet_ntop(sin->sin_family, &sin->sin_addr,
 			              addr, addr_sz))
 				goto success;
+			warn("inet_ntop");
 			goto fail;
 		case AF_INET6:
 			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
@@ -93,24 +98,21 @@ ip(const char *ifn)
 			if (inet_ntop(sin6->sin6_family, &sin6->sin6_addr,
 			              addr, addr_sz))
 				goto success;
+			warn("inet_ntop");
 			goto fail;
 		}
 success:
 	freeifaddrs(ifap);
-#if SKIP_LLA
-	if (!ifa && !*addr)
-		warnx("cannot find IP address");
-#endif
-	return (addr);
-
+	if (ifa)
+		return (addr);
+	warnx("no IP");
+	return ("-");
 fail:
 	freeifaddrs(ifap);
-	err(1, "freeifaddrs");
-	/* unreachable */
-	return ("");
+	return ("!");
 }
 
-static unsigned int
+static int
 cputemp(void)
 {
 	static const int mib[5] = {CTL_HW, HW_SENSORS, 0, SENSOR_TEMP, 0};
@@ -119,8 +121,10 @@ cputemp(void)
 
 	sn_sz = sizeof(sn);
 
-	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1)
-		err(1, "sysctl");
+	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1) {
+		warn("sysctl");
+		return (-1);
+	}
 	return ((sn.value - 273150000) / 1000000);
 }
 
@@ -131,47 +135,55 @@ timedate(void)
 	static struct tm *tm;
 	static char s[64];
 
-	if ((t = time(NULL)) == (time_t)-1)
-		err(1, "time");
-	if (!(tm = localtime(&t)))
-		err(1, "localtime");
-	if (!strftime(s, sizeof(s), TIMEFMT, tm))
-		err(1, "strftime");
+	if ((t = time(NULL)) == (time_t)-1) {
+		warn("time");
+		return ("!");
+	}
+	if (!(tm = localtime(&t))) {
+		warn("localtime");
+		return ("!");
+	}
+	if (!strftime(s, sizeof(s), TIMEFMT, tm)) {
+		warn("strftime");
+		return ("!");
+	}
 	return (s);
 }
 
-static unsigned int
+static int
 volume(void)
 {
 	static int cls;
 	static struct mixer_devinfo mdi;
 	static struct mixer_ctrl mc;
-	static int m;
+	static int fd;
 	static int v;
 
-	if ((m = open("/dev/mixer", O_RDONLY)) == -1)
-		err(1, "open");
+	if ((fd = open("/dev/mixer", O_RDONLY)) == -1) {
+		warn("open");
+		return (-1);
+	}
 
 	cls = -1;
 	v = -1;
 
 	for (mdi.index = 0; cls == -1; ++mdi.index) {
-		if (ioctl(m, AUDIO_MIXER_DEVINFO, &mdi) == -1)
-			err(1, "ioctl");
+		if (ioctl(fd, AUDIO_MIXER_DEVINFO, &mdi) == -1)
+			goto fail;
 		if (mdi.type == AUDIO_MIXER_CLASS &&
 		    !strcmp(mdi.label.name, AudioCoutputs))
 			cls = mdi.index;
 	}
 	for (mdi.index = 0; v == -1; ++mdi.index) {
-		if (ioctl(m, AUDIO_MIXER_DEVINFO, &mdi) == -1)
-			err(1, "ioctl");
+		if (ioctl(fd, AUDIO_MIXER_DEVINFO, &mdi) == -1)
+			goto fail;
 		if (mdi.type == AUDIO_MIXER_VALUE &&
 		    mdi.prev == AUDIO_MIXER_LAST &&
 		    mdi.mixer_class == cls &&
 		    !strcmp(mdi.label.name, AudioNmaster)) {
 			mc.dev = mdi.index;
-			if (ioctl(m, AUDIO_MIXER_READ, &mc) == -1)
-				err(1, "ioctl");
+			if (ioctl(fd, AUDIO_MIXER_READ, &mc) == -1)
+				goto fail;
 			v = mc.un.value.num_channels == 1 ?
 			    mc.un.value.level[AUDIO_MIXER_LEVEL_MONO] :
 			    MAX(mc.un.value.level[AUDIO_MIXER_LEVEL_LEFT],
@@ -179,9 +191,14 @@ volume(void)
 		}
 	}
 
-	if (v == -1)
-		errx(1, "cannot get system volume");
+	if (v == -1) {
+		warnx("cannot get system volume");
+		return (-1);
+	}
 	return (v * 100 / 255);
+fail:
+	warn("ioctl");
+	return (-1);
 }
 
 static void
@@ -195,14 +212,15 @@ setstatus(const char *fmt, ...)
 	va_start(ap, fmt);
 
 	if ((r = vsnprintf(s, s_sz, fmt, ap)) == -1)
-		err(1, "vsnprintf");
-	if ((size_t)r >= s_sz)
 		warn("vsnprintf");
+	else if ((size_t)r >= s_sz)
+		warn("vsnprintf");
+	else {
+		XStoreName(dpy, DefaultRootWindow(dpy), s);
+		XSync(dpy, False);
+	}
 
 	va_end(ap);
-
-	XStoreName(dpy, DefaultRootWindow(dpy), s);
-	XSync(dpy, False);
 }
 
 int
@@ -210,7 +228,6 @@ main(void)
 {
 	if (!(dpy = XOpenDisplay(NULL)))
 		errx(1, "cannot open display");
-
 loop:
 	setstatus(OUTFMT,
 	          ip(INTERFACE),
