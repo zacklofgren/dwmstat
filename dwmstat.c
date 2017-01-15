@@ -20,15 +20,15 @@
 
 #include "config.h"
 
-static const char		*_ip(const char *);
-static const unsigned int	 _temp(void);
-static const char		*_time(void);
-static const unsigned int	 _volume(void);
+static const char		*ip(const char *);
+static const unsigned int	 cputemp(void);
+static const char		*timedate(void);
+static const unsigned int	 volume(void);
 
 static Display *dpy;
 
 static const char *
-_ip(const char *ifn)
+ip(const char *ifn)
 {
 	static struct ifaddrs *ifap, *ifa;
 	static const struct sockaddr_in  *sin;
@@ -42,7 +42,7 @@ _ip(const char *ifn)
 
 	for (ifa = ifap; ifa && strcmp(ifa->ifa_name, ifn);
 	     ifa = ifa->ifa_next)
-			;
+		;
 	if (!ifa) {
 		freeifaddrs(ifap);
 		err(1, "freeifaddrs");
@@ -70,7 +70,6 @@ _ip(const char *ifn)
 		}
 success:
 	freeifaddrs(ifap);
-
 	if (!ifa) {
 		warnx("cannot find IP address");
 #if SKIP_LLA
@@ -88,7 +87,7 @@ fail:
 }
 
 static const unsigned int
-_temp(void)
+cputemp(void)
 {
 	static const int mib[5] = {CTL_HW, HW_SENSORS, 0, SENSOR_TEMP, 0};
 	static struct sensor sn;
@@ -102,7 +101,7 @@ _temp(void)
 }
 
 static const char *
-_time(void)
+timedate(void)
 {
 	static time_t t;
 	static struct tm *tm;
@@ -118,7 +117,7 @@ _time(void)
 }
 
 static const unsigned int
-_volume(void)
+volume(void)
 {
 	static int cls;
 	static struct mixer_devinfo mdi;
@@ -158,7 +157,7 @@ _volume(void)
 
 	if (v == -1)
 		errx(1, "cannot get system volume");
-	return ((v * 100) / 255);
+	return (v * 100 / 255);
 }
 
 static void
@@ -173,7 +172,7 @@ setstatus(const char *fmt, ...)
 
 	if ((r = vsnprintf(s, s_sz, fmt, ap)) == -1)
 		err(1, "vsnprintf");
-	if (r >= s_sz)
+	if ((size_t)r >= s_sz)
 		warn("vsnprintf");
 
 	va_end(ap);
@@ -190,11 +189,10 @@ main(void)
 
 loop:
 	setstatus(OUTFMT,
-	          _ip(INTERFACE),
-	          _temp(),
-	          _volume(),
-	          _time());
-
+	          ip(INTERFACE),
+	          cputemp(),
+	          volume(),
+	          timedate());
 	(void)sleep(INTERVAL);
 	goto loop;
 
