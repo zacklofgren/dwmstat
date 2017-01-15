@@ -20,10 +20,10 @@
 
 #include "config.h"
 
-static const char		*ip(const char *);
-static const unsigned int	 cputemp(void);
-static const char		*timedate(void);
-static const unsigned int	 volume(void);
+static const char	*ip(const char *);
+static unsigned int	 cputemp(void);
+static const char	*timedate(void);
+static unsigned int	 volume(void);
 
 static Display *dpy;
 
@@ -86,7 +86,7 @@ fail:
 	return ("");
 }
 
-static const unsigned int
+static unsigned int
 cputemp(void)
 {
 	static const int mib[5] = {CTL_HW, HW_SENSORS, 0, SENSOR_TEMP, 0};
@@ -116,7 +116,7 @@ timedate(void)
 	return (s);
 }
 
-static const unsigned int
+static unsigned int
 volume(void)
 {
 	static int cls;
