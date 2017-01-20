@@ -40,9 +40,9 @@ battery(void)
 		return (-1);
 	}
 	if (ioctl(fd, APM_IOC_GETPOWER, &pi) == -1) {
+		warn("ioctl");
 		if (close(fd) == -1)
 			warn("close");
-		warn("ioctl");
 		return (-1);
 	}
 	if (close(fd) == -1) {
@@ -195,9 +195,13 @@ volume(void)
 		warnx("cannot get system volume");
 		return (-1);
 	}
+	if (close(fd) == -1)
+		warn("close");
 	return (v * 100 / 255);
 fail:
 	warn("ioctl");
+	if (close(fd) == -1)
+		warn("close");
 	return (-1);
 }
 
