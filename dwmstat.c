@@ -21,13 +21,13 @@
 
 #include "config.h"
 
+static Display *dpy;
+
 static char		 battery(void);
 static char		 cputemp(void);
 static const char	*ip(void);
 static const char	*timedate(void);
 static char		 volume(void);
-
-static Display *dpy;
 
 static char
 battery(void)
@@ -101,10 +101,8 @@ ip(void)
 	     ifa = ifa->ifa_next)
 		if (ifa->ifa_addr->sa_family == AF_INET6) {
 			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
-#if SKIP_LLA
 			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
 				continue;
-#endif
 			if (inet_ntop(AF_INET6, &sin6->sin6_addr,
 			              addr, INET6_ADDRSTRLEN))
 				break;
@@ -205,45 +203,28 @@ fail:
 	return (-1);
 }
 
-static void
-setstatus(const char *fmt, ...)
+int
+main(void)
 {
-	static char s[MAX_LEN];
-	static va_list ap;
 	static int r;
+	static char s[MAX_LEN];
 
-	static const size_t s_sz = sizeof(s);
-	va_start(ap, fmt);
+	if (!(dpy = XOpenDisplay(NULL)))
+		errx(1, "cannot open display");
 
-	if ((r = vsnprintf(s, s_sz, fmt, ap)) == -1)
+loop:
+	if ((r = snprintf(s, MAX_LEN, OUTFMT, ip(), battery(),
+	                  cputemp(), volume(), timedate())) == -1)
 		warn("vsnprintf");
-	else if ((size_t)r >= s_sz)
+	else if (r >= MAX_LEN)
 		warnx("status exceeds MAX_LEN");
 	else {
 		(void)XStoreName(dpy, DefaultRootWindow(dpy), s);
 		(void)XSync(dpy, False);
 	}
-
-	va_end(ap);
-}
-
-int
-main(void)
-{
-	if (!(dpy = XOpenDisplay(NULL)))
-		errx(1, "cannot open display");
-loop:
-	setstatus(OUTFMT,
-	          ip(),
-	          battery(),
-	          cputemp(),
-	          volume(),
-	          timedate());
 	(void)sleep(INTERVAL);
 	goto loop;
-	/* TODO: Handle signals */
 
 	/* unreachable */
-	(void)XCloseDisplay(dpy);
 	return (0);
 }
