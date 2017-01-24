@@ -8,11 +8,14 @@
 #include <netinet/in.h>
 
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <ifaddrs.h>
 #include <machine/apmvar.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -22,12 +25,14 @@
 #include "config.h"
 
 static Display *dpy;
+static char stat[MAX_LEN];
 
 static char		 battery(void);
 static char		 cputemp(void);
 static const char	*ip(void);
 static const char	*timedate(void);
 static char		 volume(void);
+static void		 handler(int);
 
 static char
 battery(void)
@@ -203,23 +208,51 @@ fail:
 	return (-1);
 }
 
+static void
+handler(const int sig)
+{
+	int save_errno = errno;
+
+	psignal((unsigned int)sig, "caught signal");
+	switch (sig) {
+	case SIGABRT:
+	case SIGTERM:
+		(void)XCloseDisplay(dpy);
+		exit(0);
+	case SIGALRM:
+	case SIGHUP:
+		break;
+	case SIGINFO:
+		if (puts(stat) < 0)
+			warn("puts");
+		break;
+	}
+
+	errno = save_errno;
+}
+
 int
 main(void)
 {
 	static int r;
-	static char s[MAX_LEN];
 
 	if (!(dpy = XOpenDisplay(NULL)))
 		errx(1, "cannot open display");
 
+	signal(SIGABRT, handler);
+	signal(SIGALRM, handler);
+	signal(SIGHUP,  handler);
+	signal(SIGINFO, handler);
+	signal(SIGTERM, handler);
+
 loop:
-	if ((r = snprintf(s, MAX_LEN, OUTFMT, ip(), battery(),
+	if ((r = snprintf(stat, MAX_LEN, OUTFMT, ip(), battery(),
 	                  cputemp(), volume(), timedate())) == -1)
 		warn("vsnprintf");
 	else if (r >= MAX_LEN)
 		warnx("status exceeds MAX_LEN");
 	else {
-		(void)XStoreName(dpy, DefaultRootWindow(dpy), s);
+		(void)XStoreName(dpy, DefaultRootWindow(dpy), stat);
 		(void)XSync(dpy, False);
 	}
 	(void)sleep(INTERVAL);
