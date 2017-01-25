@@ -1,4 +1,4 @@
-/* interface to show IP addresses for */
+/* interface to show IP address for */
 #define INTERFACE "trunk0"
 /* seconds to wait between polling */
 #define INTERVAL  60
