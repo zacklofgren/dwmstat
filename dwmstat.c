@@ -187,9 +187,7 @@ volume(void)
 			mc.dev = mdi.index;
 			if (ioctl(fd, AUDIO_MIXER_READ, &mc) == -1)
 				goto fail;
-			v = mc.un.value.num_channels == 1 ?
-			    mc.un.value.level[AUDIO_MIXER_LEVEL_MONO] :
-			    MAX(mc.un.value.level[AUDIO_MIXER_LEVEL_LEFT],
+			v = MAX(mc.un.value.level[AUDIO_MIXER_LEVEL_MONO],
 			        mc.un.value.level[AUDIO_MIXER_LEVEL_RIGHT]);
 		}
 	}
@@ -200,7 +198,7 @@ volume(void)
 	}
 	if (close(fd) == -1)
 		warn("close");
-	return (v * 100 / 255);
+	return (v * 100U / 255U);
 fail:
 	warn("ioctl");
 	if (close(fd) == -1)
@@ -235,15 +233,14 @@ int
 main(void)
 {
 	static int r;
+	static const int s[] = {SIGABRT, SIGALRM, SIGHUP, SIGINFO, SIGTERM};
+
+	for (r = 0; r < (int)nitems(s); ++r)
+		if (signal(s[r], handler) == SIG_ERR)
+			err(1, "signal");
 
 	if (!(dpy = XOpenDisplay(NULL)))
 		errx(1, "cannot open display");
-
-	signal(SIGABRT, handler);
-	signal(SIGALRM, handler);
-	signal(SIGHUP,  handler);
-	signal(SIGINFO, handler);
-	signal(SIGTERM, handler);
 
 loop:
 	if ((r = snprintf(stat, MAX_LEN, OUTFMT, ip(), battery(),
