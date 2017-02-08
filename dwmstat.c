@@ -242,13 +242,13 @@ main(void)
 		if (signal(s[r], handler) == SIG_ERR)
 			err(1, "signal");
 
-	if (!(dpy = XOpenDisplay(NULL)))
+	if ((dpy = XOpenDisplay(NULL)) == NULL)
 		errx(1, "cannot open display");
 
 loop:
 	if ((r = snprintf(stat, MAX_LEN, OUTFMT, ip(), battery(),
 	                  cputemp(), volume(), timedate())) == -1)
-		warn("vsnprintf");
+		warn("snprintf");
 	else if (r >= MAX_LEN)
 		warnx("status exceeds MAX_LEN");
 	else {
