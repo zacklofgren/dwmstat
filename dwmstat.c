@@ -94,32 +94,35 @@ ip(void)
 		warn("getifaddrs");
 		return ("!");
 	}
-	for (ifa = ifap; ifa && strcmp(ifa->ifa_name, INTERFACE) != 0;
+	for (ifa = ifap; ifa != NULL && strcmp(ifa->ifa_name, INTERFACE) != 0;
 	     ifa = ifa->ifa_next)
 		;
-	if (!ifa) {
+	if (ifa == NULL) {
 		warnx("no such interface");
 		goto fail;
 	}
 
-	for (; ifa && ifa->ifa_addr && strcmp(ifa->ifa_name, INTERFACE) == 0;
+	for (; ifa != NULL && ifa->ifa_addr != NULL &&
+	     strcmp(ifa->ifa_name, INTERFACE) == 0;
 	     ifa = ifa->ifa_next)
 		if (ifa->ifa_addr->sa_family == AF_INET6) {
 			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
 			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
 				continue;
 			if (inet_ntop(AF_INET6, &sin6->sin6_addr,
-			              addr, INET6_ADDRSTRLEN))
-				break;
-			warn("inet_ntop");
-			goto fail;
+			              addr, INET6_ADDRSTRLEN) == NULL) {
+				warn("inet_ntop");
+				goto fail;
+			}
+			break;
 		} else if (ifa->ifa_addr->sa_family == AF_INET) {
 			sin = (const struct sockaddr_in *)ifa->ifa_addr;
 			if (inet_ntop(AF_INET, &sin->sin_addr,
-			              addr, INET_ADDRSTRLEN))
-				break;
-			warn("inet_ntop");
-			goto fail;
+			              addr, INET_ADDRSTRLEN) == NULL) {
+				warn("inet_ntop");
+				goto fail;
+			}
+			break;
 		}
 	freeifaddrs(ifap);
 	if (ifa)
@@ -142,7 +145,7 @@ timedate(void)
 		warn("time");
 		return ("!");
 	}
-	if (!(tm = localtime(&t))) {
+	if ((tm = localtime(&t)) == NULL) {
 		warn("localtime");
 		return ("!");
 	}
@@ -209,7 +212,7 @@ fail:
 static void
 handler(const int sig)
 {
-	int save_errno = errno;
+	const int save_errno = errno;
 
 	psignal((unsigned int)sig, "caught signal");
 	switch (sig) {
