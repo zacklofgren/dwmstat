@@ -63,7 +63,7 @@ battery(void)
 		warnx("no battery");
 		return (-1);
 	}
-	return (char)(pi.battery_life);
+	return (pi.battery_life);
 }
 
 static char
@@ -94,38 +94,38 @@ ip(void)
 		warn("getifaddrs");
 		return ("!");
 	}
-	for (ifa = ifap; ifa != NULL && strcmp(ifa->ifa_name, INTERFACE) != 0;
-	     ifa = ifa->ifa_next)
-		;
+	for (ifa = ifap; ifa != NULL && strcmp(ifa->ifa_name, INTERFACE) != 0;)
+		ifa = ifa->ifa_next;
 	if (ifa == NULL) {
 		warnx("no such interface");
 		goto fail;
 	}
 
 	for (; ifa != NULL && ifa->ifa_addr != NULL &&
-	     strcmp(ifa->ifa_name, INTERFACE) == 0;
-	     ifa = ifa->ifa_next)
-		if (ifa->ifa_addr->sa_family == AF_INET6) {
+	     strcmp(ifa->ifa_name, INTERFACE) == 0; ifa = ifa->ifa_next)
+		switch (ifa->ifa_addr->sa_family) {
+		case AF_INET6:
 			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
 			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
 				continue;
-			if (inet_ntop(AF_INET6, &sin6->sin6_addr,
-			              addr, INET6_ADDRSTRLEN) == NULL) {
+			if (inet_ntop(AF_INET6, &sin6->sin6_addr, addr,
+			              INET6_ADDRSTRLEN) == NULL) {
 				warn("inet_ntop");
 				goto fail;
 			}
-			break;
-		} else if (ifa->ifa_addr->sa_family == AF_INET) {
+			goto stop;
+		case AF_INET:
 			sin = (const struct sockaddr_in *)ifa->ifa_addr;
-			if (inet_ntop(AF_INET, &sin->sin_addr,
-			              addr, INET_ADDRSTRLEN) == NULL) {
+			if (inet_ntop(AF_INET, &sin->sin_addr, addr,
+			              INET_ADDRSTRLEN) == NULL) {
 				warn("inet_ntop");
 				goto fail;
 			}
-			break;
+			goto stop;
 		}
+stop:
 	freeifaddrs(ifap);
-	if (ifa)
+	if (ifa != NULL)
 		return (addr);
 	warnx("no IP");
 	return ("-");
@@ -201,7 +201,7 @@ volume(void)
 	}
 	if (close(fd) == -1)
 		warn("close");
-	return (v * 100U / 255U);
+	return (v * 100 / 255);
 fail:
 	warn("ioctl");
 	if (close(fd) == -1)
@@ -209,7 +209,7 @@ fail:
 	return (-1);
 }
 
-static void
+__dead static void
 handler(const int sig)
 {
 	const int save_errno = errno;

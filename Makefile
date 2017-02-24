@@ -4,7 +4,7 @@ BINDIR = /usr/local/bin
 
 WARNINGS = Yes
 CFLAGS  += -std=c99 -pedantic -Wextra -Werror
-CFLAGS  += -Wno-error=variadic-macros -Wno-error=unused-function
+CFLAGS  += -Wno-error=variadic-macros
 CFLAGS  += -I/usr/X11R6/include
 LDFLAGS += -L/usr/X11R6/lib
 LDADD   += -lX11
