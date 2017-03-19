@@ -29,10 +29,10 @@ static char stat[MAX_LEN];
 
 static char		 battery(void);
 static char		 cputemp(void);
-static const char	*ip(void);
+static const char	*ip(const char *);
 static const char	*timedate(void);
 static char		 volume(void);
-static void		 handler(int);
+static __dead void	 handler(int);
 
 static char
 battery(void)
@@ -83,7 +83,7 @@ cputemp(void)
 }
 
 static const char *
-ip(void)
+ip(const char *name)
 {
 	static struct ifaddrs *ifap, *ifa;
 	static const struct sockaddr_in  *sin;
@@ -94,7 +94,7 @@ ip(void)
 		warn("getifaddrs");
 		return ("!");
 	}
-	for (ifa = ifap; ifa != NULL && strcmp(ifa->ifa_name, INTERFACE) != 0;)
+	for (ifa = ifap; ifa != NULL && strcmp(ifa->ifa_name, name) != 0;)
 		ifa = ifa->ifa_next;
 	if (ifa == NULL) {
 		warnx("no such interface");
@@ -102,7 +102,7 @@ ip(void)
 	}
 
 	for (; ifa != NULL && ifa->ifa_addr != NULL &&
-	     strcmp(ifa->ifa_name, INTERFACE) == 0; ifa = ifa->ifa_next)
+	     strcmp(ifa->ifa_name, name) == 0; ifa = ifa->ifa_next)
 		switch (ifa->ifa_addr->sa_family) {
 		case AF_INET6:
 			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
@@ -209,14 +209,14 @@ fail:
 	return (-1);
 }
 
-__dead static void
+static __dead void
 handler(const int sig)
 {
 	const int save_errno = errno;
 
 	psignal((unsigned int)sig, "caught signal");
 	switch (sig) {
-	case SIGABRT:
+	case SIGINT:
 	case SIGTERM:
 		(void)XCloseDisplay(dpy);
 		exit(0);
@@ -224,7 +224,7 @@ handler(const int sig)
 	case SIGHUP:
 		break;
 	case SIGINFO:
-		if (puts(stat) < 0)
+		if (puts(stat) == EOF)
 			warn("puts");
 		break;
 	}
@@ -236,7 +236,7 @@ int
 main(void)
 {
 	static int r;
-	static const int s[] = {SIGABRT, SIGALRM, SIGHUP, SIGINFO, SIGTERM};
+	static const int s[] = {SIGHUP, SIGINT, SIGABRT, SIGTERM, SIGINFO};
 
 	for (r = 0; r < (int)nitems(s); ++r)
 		if (signal(s[r], handler) == SIG_ERR)
@@ -246,7 +246,7 @@ main(void)
 		errx(1, "cannot open display");
 
 loop:
-	if ((r = snprintf(stat, MAX_LEN, OUTFMT, ip(), battery(),
+	if ((r = snprintf(stat, MAX_LEN, OUTFMT, ip(INTERFACE), battery(),
 	                  cputemp(), volume(), timedate())) == -1)
 		warn("snprintf");
 	else if (r >= MAX_LEN)
