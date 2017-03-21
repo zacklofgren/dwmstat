@@ -4,8 +4,14 @@
 #include <sys/sensors.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netdb.h>
+
+/*
+ * XXX: There must be a cleaner way
+ * from <netinet6/in6_var.h>
+ */
+#define IFA_IN6(x) (&((struct sockaddr_in6 *)((x)->ifa_addr))->sin6_addr)
 
 #include <err.h>
 #include <errno.h>
@@ -86,52 +92,40 @@ static const char *
 ip(const char *name)
 {
 	static struct ifaddrs *ifap, *ifa;
-	static const struct sockaddr_in  *sin;
-	static const struct sockaddr_in6 *sin6;
-	static char addr[INET6_ADDRSTRLEN];
+	static sa_family_t af;
+	static char addr[NI_MAXHOST];
 
 	if (getifaddrs(&ifap) == -1) {
 		warn("getifaddrs");
-		return ("!");
-	}
-	for (ifa = ifap; ifa != NULL && strcmp(ifa->ifa_name, name) != 0;)
-		ifa = ifa->ifa_next;
-	if (ifa == NULL) {
-		warnx("no such interface");
-		goto fail;
+		*addr = '!';
+		return (addr);
 	}
 
-	for (; ifa != NULL && ifa->ifa_addr != NULL &&
-	     strcmp(ifa->ifa_name, name) == 0; ifa = ifa->ifa_next)
-		switch (ifa->ifa_addr->sa_family) {
-		case AF_INET6:
-			sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
-			if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr))
+	for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL ||
+		    strcmp(ifa->ifa_name, name) != 0)
+			continue;
+		if ((af = ifa->ifa_addr->sa_family) == AF_INET6) {
+			if (IN6_IS_ADDR_LINKLOCAL(IFA_IN6(ifa)))
 				continue;
-			if (inet_ntop(AF_INET6, &sin6->sin6_addr, addr,
-			              INET6_ADDRSTRLEN) == NULL) {
-				warn("inet_ntop");
-				goto fail;
-			}
-			goto stop;
-		case AF_INET:
-			sin = (const struct sockaddr_in *)ifa->ifa_addr;
-			if (inet_ntop(AF_INET, &sin->sin_addr, addr,
-			              INET_ADDRSTRLEN) == NULL) {
-				warn("inet_ntop");
-				goto fail;
-			}
-			goto stop;
+		} else {
+			if (af != AF_INET)
+				continue;
 		}
-stop:
+
+		if (getnameinfo(ifa->ifa_addr, sizeof(ifa->ifa_addr),
+		                addr, sizeof(addr), NULL, 0,
+		                NI_NUMERICHOST) != 0) {
+			warn("getnameinfo");
+			*addr = '!';
+		}
+		break;
+	}
+
 	freeifaddrs(ifap);
-	if (ifa != NULL)
-		return (addr);
-	warnx("no IP");
-	return ("-");
-fail:
-	freeifaddrs(ifap);
-	return ("!");
+	if (ifa == NULL)
+		*addr = '-';
+	return (addr);
 }
 
 static const char *
