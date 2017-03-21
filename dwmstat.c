@@ -32,7 +32,7 @@ static char		 cputemp(void);
 static const char	*ip(const char *);
 static const char	*timedate(void);
 static char		 volume(void);
-static __dead void	 handler(int);
+static void		 handler(int);
 
 static char
 battery(void)
@@ -209,7 +209,7 @@ fail:
 	return (-1);
 }
 
-static __dead void
+static void
 handler(const int sig)
 {
 	const int save_errno = errno;
