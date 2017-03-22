@@ -4,14 +4,13 @@
 #include <sys/sensors.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <netinet/in.h>
-#include <netdb.h>
-
 /*
- * XXX: There must be a cleaner way
- * from <netinet6/in6_var.h>
+ * XXX: All this for IFA_IN6(x) seems hackish
  */
-#define IFA_IN6(x) (&((struct sockaddr_in6 *)((x)->ifa_addr))->sin6_addr)
+#include <net/if.h>		/* IFNAMISZ */
+#include <netinet/in.h>
+#include <netinet6/in6_var.h>	/* IFA_IN6(x) */
+#include <netdb.h>
 
 #include <err.h>
 #include <errno.h>
