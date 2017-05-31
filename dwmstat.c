@@ -101,16 +101,12 @@ ip(const char *name)
 	}
 
 	for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
-		if (ifa->ifa_addr == NULL ||
-		    strcmp(ifa->ifa_name, name) != 0)
+		if ((ifa->ifa_addr == NULL ||
+		     strcmp(ifa->ifa_name, name) != 0) ||
+		    ((af = ifa->ifa_addr->sa_family) == AF_INET6 &&
+		     IN6_IS_ADDR_LINKLOCAL(IFA_IN6(ifa))) ||
+		    af != AF_INET)
 			continue;
-		if ((af = ifa->ifa_addr->sa_family) == AF_INET6) {
-			if (IN6_IS_ADDR_LINKLOCAL(IFA_IN6(ifa)))
-				continue;
-		} else {
-			if (af != AF_INET)
-				continue;
-		}
 
 		if (getnameinfo(ifa->ifa_addr, sizeof(ifa->ifa_addr),
 		                addr, sizeof(addr), NULL, 0,
