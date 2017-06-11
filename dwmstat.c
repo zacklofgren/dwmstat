@@ -189,11 +189,23 @@ handler(const int sig)
 }
 
 int
-main(void)
+main(int argc, char **argv)
 {
-	static int		r;
-	static const int	s[] = {SIGHUP, SIGINT, SIGABRT,
+	static int		 dflag = 0, r;
+	extern char		*__progname;
+	static const int	 s[] = {SIGHUP, SIGINT, SIGABRT,
 				    SIGTERM, SIGINFO};
+
+	if (argc > 1) {
+		if (argc == 2 && strcmp(argv[1], "-d") == 0)
+			dflag = 1;
+		else {
+			fprintf(stderr, "usage: %s [-d]\n", __progname);
+			return (1);
+		}
+	}
+	if (!dflag && daemon(1, 1) == -1)
+		err(1, "daemon");
 
 	for (r = 0; r < (int)nitems(s); ++r)
 		if (signal(s[r], handler) == SIG_ERR)
