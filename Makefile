@@ -3,7 +3,7 @@ NOMAN  = noman
 PROG   = dwmstat
 
 CC       = egcc
-CFLAGS  += -std=c99 -pedantic -Werror
+CFLAGS  += -O2 -std=c99 -pedantic -Werror
 CFLAGS  += -Wno-error=variadic-macros
 CFLAGS  += -I/usr/X11R6/include
 LDFLAGS += -L/usr/X11R6/lib

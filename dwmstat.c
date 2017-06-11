@@ -29,8 +29,10 @@
 
 #include "config.h"
 
-static Display *dpy;
-static char stat[MAX_LEN];
+#define WRET(s, r)	do { warn(s); return (r); } while(0)
+
+static Display	*dpy;
+static char	 stat[MAX_LEN];
 
 static char		 battery(void);
 static char		 cputemp(void);
@@ -42,48 +44,32 @@ static void		 handler(int);
 static char
 battery(void)
 {
-	static int fd;
-	static struct apm_power_info pi;
+	static int			fd;
+	static struct apm_power_info	pi;
 
-	if ((fd = open("/dev/apm", O_RDONLY)) == -1) {
-		warn("open");
-		return (-1);
-	}
-	if (ioctl(fd, APM_IOC_GETPOWER, &pi) == -1) {
-		warn("ioctl");
-		if (close(fd) == -1)
-			warn("close");
-		return (-1);
-	}
-	if (close(fd) == -1) {
-		warn("close");
-		return (-1);
-	}
+	if ((fd = open("/dev/apm", O_RDONLY)) == -1 ||
+	    ioctl(fd, APM_IOC_GETPOWER, &pi) == -1 ||
+	    close(fd) == -1)
+		WRET("battery", -1);
 
-	switch (pi.battery_state) {
-	case APM_BATT_UNKNOWN:
-		warnx("unknown battery state");
-		return (-1);
-	case APM_BATTERY_ABSENT:
-		warnx("no battery");
-		return (-1);
-	}
+	if (pi.battery_state == APM_BATT_UNKNOWN ||
+	    pi.battery_state == APM_BATTERY_ABSENT)
+		WRET("unknown/missing battery", -1);
+
 	return (pi.battery_life);
 }
 
 static char
 cputemp(void)
 {
-	static const int mib[5] = {CTL_HW, HW_SENSORS, 0, SENSOR_TEMP, 0};
-	static struct sensor sn;
-	static size_t sn_sz;
+	static struct		sensor sn;
+	static size_t		sn_sz = sizeof(sn);
+	static const int	mib[5]	= {CTL_HW, HW_SENSORS,
+				    0, SENSOR_TEMP, 0};
 
-	sn_sz = sizeof(sn);
+	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1)
+		WRET("cputemp", -1);
 
-	if (sysctl(mib, 5, &sn, &sn_sz, NULL, 0) == -1) {
-		warn("sysctl");
-		return (-1);
-	}
 	return ((sn.value - 273150000LL) / 1000000LL);
 }
 
@@ -126,41 +112,27 @@ ip(const char *name)
 static const char *
 timedate(void)
 {
-	static time_t t;
-	static struct tm *tm;
-	static char s[64];
+	static time_t		 t;
+	static struct tm	*tm;
+	static char 		 s[64];
 
-	if ((t = time(NULL)) == (time_t)-1) {
-		warn("time");
-		return ("!");
-	}
-	if ((tm = localtime(&t)) == NULL) {
-		warn("localtime");
-		return ("!");
-	}
-	if (strftime(s, sizeof(s), TIMEFMT, tm) == 0) {
-		warn("strftime");
-		return ("!");
-	}
+	if ((t = time(NULL)) == (time_t) - 1 ||
+	    (tm = localtime(&t)) == NULL ||
+	    strftime(s, sizeof(s), TIMEFMT, tm) == 0)
+		WRET("timedate", "!");
+
 	return (s);
 }
 
 static char
 volume(void)
 {
-	static int cls;
-	static struct mixer_devinfo mdi;
-	static struct mixer_ctrl mc;
-	static int fd;
-	static int v;
+	static int			cls = -1, fd, v = -1;
+	static struct mixer_devinfo	mdi;
+	static struct mixer_ctrl	mc;
 
-	if ((fd = open("/dev/mixer", O_RDONLY)) == -1) {
-		warn("open");
-		return (-1);
-	}
-
-	cls = -1;
-	v = -1;
+	if ((fd = open("/dev/mixer", O_RDONLY)) == -1)
+		WRET("volume", -1);
 
 	for (mdi.index = 0; cls == -1; ++mdi.index) {
 		if (ioctl(fd, AUDIO_MIXER_DEVINFO, &mdi) == -1)
@@ -184,24 +156,19 @@ volume(void)
 		}
 	}
 
-	if (v == -1) {
-		warnx("cannot get system volume");
-		return (-1);
-	}
-	if (close(fd) == -1)
-		warn("close");
+	if (v == -1 || close(fd) == -1)
+		WRET("volume", -1);
+
 	return (v * 100 / 255);
 fail:
-	warn("ioctl");
-	if (close(fd) == -1)
-		warn("close");
-	return (-1);
+	(void)close(fd);
+	WRET("volume", -1);
 }
 
 static void
 handler(const int sig)
 {
-	const int save_errno = errno;
+	const int	save_errno = errno;
 
 	psignal((unsigned int)sig, "caught signal");
 	switch (sig) {
@@ -224,8 +191,9 @@ handler(const int sig)
 int
 main(void)
 {
-	static int r;
-	static const int s[] = {SIGHUP, SIGINT, SIGABRT, SIGTERM, SIGINFO};
+	static int		r;
+	static const int	s[] = {SIGHUP, SIGINT, SIGABRT,
+				    SIGTERM, SIGINFO};
 
 	for (r = 0; r < (int)nitems(s); ++r)
 		if (signal(s[r], handler) == SIG_ERR)
