@@ -127,7 +127,7 @@ timedate(void)
 static char
 volume(void)
 {
-	static int			cls = -1, fd, v = -1;
+	static int			cls = -1, fd, v;
 	static struct mixer_devinfo	mdi;
 	static struct mixer_ctrl	mc;
 
@@ -141,7 +141,7 @@ volume(void)
 		    strcmp(mdi.label.name, AudioCoutputs) == 0)
 			cls = mdi.index;
 	}
-	for (mdi.index = 0; v == -1; ++mdi.index) {
+	for (mdi.index = 0, v = -1; v == -1; ++mdi.index) {
 		if (ioctl(fd, AUDIO_MIXER_DEVINFO, &mdi) == -1)
 			goto fail;
 		if (mdi.type == AUDIO_MIXER_VALUE &&
