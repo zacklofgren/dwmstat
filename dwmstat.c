@@ -76,9 +76,9 @@ cputemp(void)
 static const char *
 ip(const char *name)
 {
-	static struct ifaddrs *ifap, *ifa;
-	static sa_family_t af;
-	static char addr[NI_MAXHOST];
+	static struct ifaddrs	*ifap, *ifa;
+	static sa_family_t	 af;
+	static char		 addr[NI_MAXHOST];
 
 	if (getifaddrs(&ifap) == -1) {
 		warn("getifaddrs");
@@ -87,16 +87,15 @@ ip(const char *name)
 	}
 
 	for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
-		if ((ifa->ifa_addr == NULL ||
-		     strcmp(ifa->ifa_name, name) != 0) ||
-		    ((af = ifa->ifa_addr->sa_family) == AF_INET6 &&
-		     IN6_IS_ADDR_LINKLOCAL(IFA_IN6(ifa))) ||
-		    af != AF_INET)
+		if (ifa->ifa_addr == NULL ||
+		    strcmp(ifa->ifa_name, name) != 0 ||
+		    (((af = ifa->ifa_addr->sa_family) == AF_INET6 &&
+		      IN6_IS_ADDR_LINKLOCAL(IFA_IN6(ifa))) ||
+		     af != AF_INET))
 			continue;
 
 		if (getnameinfo(ifa->ifa_addr, sizeof(ifa->ifa_addr),
-		                addr, sizeof(addr), NULL, 0,
-		                NI_NUMERICHOST) != 0) {
+		    addr, sizeof(addr), NULL, 0, NI_NUMERICHOST) != 0) {
 			warn("getnameinfo");
 			*addr = '!';
 		}
@@ -194,7 +193,7 @@ main(int argc, char **argv)
 	static int		 dflag = 0, r;
 	extern char		*__progname;
 	static const int	 s[] = {SIGHUP, SIGINT, SIGABRT,
-				    SIGTERM, SIGINFO};
+				     SIGTERM, SIGINFO};
 
 	if (argc > 1) {
 		if (argc == 2 && strcmp(argv[1], "-d") == 0)
