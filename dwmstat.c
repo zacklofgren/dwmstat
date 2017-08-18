@@ -82,7 +82,8 @@ ip(const char *name)
 
 	if (getifaddrs(&ifap) == -1) {
 		warn("getifaddrs");
-		*addr = '!';
+		addr[0] = '!';
+		addr[1] = '\0';
 		return (addr);
 	}
 
@@ -97,14 +98,17 @@ ip(const char *name)
 		if (getnameinfo(ifa->ifa_addr, sizeof(ifa->ifa_addr),
 		    addr, sizeof(addr), NULL, 0, NI_NUMERICHOST) != 0) {
 			warn("getnameinfo");
-			*addr = '!';
+			addr[0] = '!';
+			addr[1] = '\0';
 		}
 		break;
 	}
 
 	freeifaddrs(ifap);
-	if (ifa == NULL)
-		*addr = '-';
+	if (ifa == NULL) {
+		addr[0] = '-';
+		addr[1] = '\0';
+	}
 	return (addr);
 }
 
