@@ -2,8 +2,7 @@ BINDIR = /usr/local/bin
 NOMAN  = noman
 PROG   = dwmstat
 
-CC       = egcc
-CFLAGS  += -O2 -std=c99 -pedantic -Werror
+CFLAGS  += -std=c99 -pedantic -Werror
 CFLAGS  += -Wno-error=variadic-macros
 CFLAGS  += -I/usr/X11R6/include
 LDFLAGS += -L/usr/X11R6/lib
