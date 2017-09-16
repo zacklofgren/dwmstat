@@ -195,7 +195,6 @@ int
 main(int argc, char **argv)
 {
 	static int		 dflag = 0, r;
-	extern char		*__progname;
 	static const int	 s[] = {SIGHUP, SIGINT, SIGABRT,
 				     SIGTERM, SIGINFO};
 
@@ -203,7 +202,7 @@ main(int argc, char **argv)
 		if (argc == 2 && strcmp(argv[1], "-d") == 0)
 			dflag = 1;
 		else {
-			fprintf(stderr, "usage: %s [-d]\n", __progname);
+			fprintf(stderr, "usage: %s [-d]\n", getprogname());
 			return (1);
 		}
 	}
