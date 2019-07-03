@@ -1,4 +1,7 @@
 #dwmstat
+This is my fork of dwmstat with my modifications. The original README is below.
+
+# README
 dwmstat is the successor of
 [setdwmstatus](https://notabug.org/kl3/scripts/setdwmstatus) in order to
 provide a really simple and more efficient way of having a status bar for
